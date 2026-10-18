@@ -1,0 +1,191 @@
+---
+title: 'Costco vs. Walmart: Risk and Return'
+author: "Brett Tierce"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    code_folding: hide
+  pdf_document: default
+params:
+  stocks: ["COST", "WMT"]     # INPUT: the two stocks to compare
+  benchmark: "SPY"            # INPUT: market benchmark (SPY = S&P 500 ETF)
+  start_date: "2021-09-01"    # INPUT: one month before your first return month
+  end_date: "2026-09-30"      # INPUT: last date of data
+  rf_annual: 0.04             # INPUT: annual risk-free rate (0.04 = 4%)
+  start_value: 10000          # INPUT: starting dollars for the growth chart
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE, fig.width = 9, fig.height = 4.5)
+library(tidyverse)
+library(tidyquant)
+library(scales)
+options(knitr.kable.NA = "—")
+```
+
+## Summary
+
+Over five years (Oct. 2021 - Sep. 2026), both stocks outpaced the market: \$10,000 grew to \$24,471 in Walmart and \$21,712 in Costco, well ahead of the S&P 500's \$19,040. Walmart had the best risk-adjusted performance, with lower volatility than Costco (20.6% vs. 23.3%) and the highest return (19.6%), resulting in a Sharpe ratio of 0.76 versus the S&P 500's 0.62 and Costco's 0.55. Walmart also had a lower beta (0.57 vs. 0.88) and market correlation (0.43 vs. 0.59) than Costco, plus an annual alpha of 10.4%, making it the stronger diversifier for a portfolio anchored by an index fund. Still, Costco ended 11.1% below its mid-2025 peak and Walmart 18.7% below its 2026 high while the market finished at a new high, showing how single stocks carry company-specific risks that an index fund spreads out.
+
+## Data
+
+```{r}
+tickers <- c(unlist(params$stocks), params$benchmark)
+
+prices <- tq_get(tickers,
+                 get  = "stock.prices",
+                 from = params$start_date,
+                 to   = params$end_date)
+```
+
+```{r}
+returns <- prices |>
+  group_by(symbol) |>
+  tq_transmute(select     = adjusted,
+               mutate_fun = periodReturn,
+               period     = "monthly",
+               type       = "arithmetic",
+               col_rename = "ret") |>
+  slice(-1) |>
+  ungroup()
+```
+
+Daily adjusted prices for COST, WMT and SPY (S&P 500 ETF) from Yahoo Finance, converted to 60 monthly returns (Oct. 2021-Sep. 2026). Adjusted prices include dividends and Walmart's February 2024 3-for-1 split. Risk-free rate: 4% annual.
+
+## Growth of $10,000
+
+```{r}
+growth <- returns |>
+  group_by(symbol) |>
+  mutate(value = params$start_value * cumprod(1 + ret)) |>
+  ungroup()
+
+ggplot(growth, aes(x = date, y = value, color = symbol)) +
+  geom_line(linewidth = 1) +
+  scale_y_continuous(labels = dollar) +
+  labs(title    = paste("Growth of", dollar(params$start_value)),
+       subtitle = "Monthly, dividends reinvested (adjusted prices)",
+       x = NULL, y = "Portfolio value", color = NULL) +
+  theme_minimal()
+
+growth |>
+     group_by(symbol) |>
+     slice_tail(n = 1) |>
+     ungroup() |>
+     transmute(Ticker = symbol, `Ending value` = dollar(value)) |>
+     knitr::kable()
+```
+
+Over five years, both stocks outpaced the market: \$10,000 grew to \$24,471 in Walmart and \$21,712 in Costco, well ahead of the S&P 500's \$19,040. Costco led most of the period, but Walmart overtook it in late 2025, with a steep rise to \$30,100, then fell 18.7% over the next few months.
+
+## Return & Risk
+
+```{r}
+rf_monthly <- (1 + params$rf_annual)^(1/12) - 1
+
+risk_return <- returns |>
+  group_by(symbol) |>
+  summarise(
+    ann_return    = prod(1 + ret)^(12 / n()) - 1,
+    ann_vol       = sd(ret) * sqrt(12),
+    sharpe        = (ann_return - params$rf_annual) / ann_vol,
+    best_month    = max(ret),
+    worst_month   = min(ret),
+    pct_up_months = mean(ret > 0)
+  )
+
+risk_return |>
+  mutate(across(c(ann_return, ann_vol, best_month, worst_month, pct_up_months),
+                ~ percent(.x, accuracy = 0.1)),
+         sharpe = round(sharpe, 2)) |>
+  knitr::kable(col.names = c("Ticker", "Annual return", "Volatility", "Sharpe",
+                             "Best month", "Worst month", "% up months"))
+```
+
+Walmart had the best risk-adjusted performance, with lower volatility (20.6%) than Costco and the highest return (19.6%), resulting in a Sharpe ratio of 0.76 versus the S&P 500’s 0.62. Although Costco also beat the market's return (16.8% vs. 13.7%), its higher volatility (23.3%) gave it the lowest Sharpe ratio (0.55).
+
+## Market Sensitivity
+
+```{r}
+market <- returns |>
+  filter(symbol == params$benchmark) |>
+  select(date, mkt = ret)
+
+vs_market <- returns |>
+  filter(symbol != params$benchmark) |>
+  left_join(market, by = "date")
+
+capm <- vs_market |>
+  group_by(symbol) |>
+  summarise(
+    beta         = cov(ret, mkt) / var(mkt),
+    correlation  = cor(ret, mkt),
+    alpha_annual = (mean(ret - rf_monthly) - beta * mean(mkt - rf_monthly)) * 12
+  )
+```
+
+```{r}
+ggplot(vs_market, aes(x = mkt, y = ret)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE) +
+  facet_wrap(~ symbol) +
+  scale_x_continuous(labels = percent) +
+  scale_y_continuous(labels = percent) +
+  labs(title = paste("Monthly returns vs.", params$benchmark),
+       x = paste(params$benchmark, "monthly return"), y = "Stock monthly return") +
+  theme_minimal()
+```
+
+```{r}
+returns |>
+  pivot_wider(names_from = symbol, values_from = ret) |>
+  select(-date) |>
+  cor() |>
+  round(2)
+```
+
+Walmart and Costco had the highest correlation (0.63) of any pair, likely because both are affected by the same consumer spending drivers. Walmart had the lowest market correlation (0.43), making it the stronger diversifier for a portfolio anchored by an index fund. Both stocks had betas below 1 (Costco 0.88, Walmart 0.57), meaning they typically moved less than the market in a given month.
+
+## Drawdowns and Scorecard
+
+```{r}
+drawdowns <- growth |>
+  group_by(symbol) |>
+  mutate(peak     = cummax(value),
+         drawdown = value / peak - 1) |>
+  ungroup()
+
+ggplot(drawdowns, aes(x = date, y = drawdown, fill = symbol)) +
+  geom_area(alpha = 0.4, position = "identity") +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Drawdown from previous high", x = NULL, y = NULL, fill = NULL) +
+  theme_minimal()
+```
+
+```{r}
+max_dd <- drawdowns |>
+  group_by(symbol) |>
+  summarise(max_drawdown = min(drawdown))
+
+scorecard <- risk_return |>
+  select(symbol, ann_return, ann_vol, sharpe) |>
+  left_join(capm,   by = "symbol") |>
+  left_join(max_dd, by = "symbol")
+
+scorecard |>
+  mutate(across(c(ann_return, ann_vol, alpha_annual, max_drawdown),
+                ~ percent(.x, accuracy = 0.1)),
+         across(c(sharpe, beta, correlation), ~ round(.x, 2))) |>
+  knitr::kable(col.names = c("Ticker", "Annual return", "Volatility", "Sharpe",
+                             "Beta", "Correlation", "Alpha (annual)", "Max drawdown"))
+```
+
+In the 2022 sell-off, both stocks fell about 20% (COST -20.3%, WMT -20.2%), less than the S&P 500's -23.9%, and recovered faster. Recently the pattern reversed: both stocks are below their highs while the market sits at a new high.
+
+## Limitations
+
+- Past performance does not predict future returns; results reflect one market environment
+- Analysis from a single 5-year window; a different start or end date could change results
+- Simplified constant risk-free rate of 4%; actual rates ranged from near 0% to above 5% over the period, so Sharpe ratios and alpha are approximate
+- Month-end data used to measure drawdowns; true intra-month lows were deeper than shown
