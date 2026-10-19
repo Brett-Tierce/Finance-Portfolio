@@ -2,7 +2,7 @@
 Financial models and analyses built from public company data by Brett Tierce, finance student at Auburn University.
 
 ## Alaska Air – Q2 2026 Guidance vs. Actual
-Performed a variance analysis of management guidance (Apr 20, 2026) against reported Q2 2026 results (Jul 21, 2026) using Excel
+Variance analysis of management guidance (Apr 20, 2026) against reported Q2 2026 results (Jul 21, 2026), built in Excel.
 
 Findings: 
 - EPS beat guidance (-$0.92 vs. -$1.10), but $0.15 of the $0.18 improvement came from a 42% tax rate on the pretax loss vs. 32% planned, making the beat low quality and not repeatable.
@@ -12,7 +12,7 @@ Findings:
 [View PDF](alaska-air-q2-2026-guidance-vs.-actual/ALK_Q2_2026_Guidance_vs_Actual.pdf)
 
 ## T-Mobile - 3-Statement & DCF Model
-A 5-year projection of the income statement, balance sheet, and cash flow statement integrated with a DCF model to find T-Mobile's intrinsic equity value using Excel
+Five-year integrated projection of the income statement, balance sheet, and cash flow statement, linked to a DCF valuation, built in Excel.
 
 Findings:
 - The DCF model suggests $174.72 per share vs. $154.06 today, using a 7.3% WACC and a 7.0x terminal multiple on a five-year unlevered cash flow forecast.
@@ -22,7 +22,7 @@ Findings:
 [View PDF](t-mobile-3-statement-dcf-model/T-Mobile_3-Statement_DCF_Models.pdf)
 
 ## Costco vs. Walmart – R Analysis
-Built a parameterized R Markdown risk/return report comparing Costco and Walmart to the S&P 500 over 60 months of returns (Oct. 2021 - Sep. 2026)
+Parameterized R Markdown report comparing the risk and return of Costco and Walmart against the S&P 500 over 60 months (Oct 2021 – Sep 2026).
 
 Findings:
 - Both stocks outpaced the market: $10,000 grew to $24,471 in Walmart and $21,712 in Costco, well ahead of the S&P 500’s $19,040.
