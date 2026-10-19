@@ -30,4 +30,4 @@ Findings:
 - Walmart also had a lower beta (0.57 vs. 0.88) and market correlation (0.43 vs. 0.59) than Costco, plus an annual alpha of 10.4%, making it the stronger diversifier for a portfolio anchored by an index fund.
 - Costco ended 11.1% below its mid-2025 peak and Walmart 18.7% below its 2026 high, while the market finished at a new high, showing how single stocks carry company-specific risks that an index fund spreads out.
 
-- [View Report](https://Brett-Tierce.github.io/finance-portfolio/costco-vs-walmart-analysis/cost_vs_wmt.html)
+- [View Report](https://Brett-Tierce.github.io/Finance-Portfolio/costco-vs-walmart-analysis/cost_vs_wmt.html)
